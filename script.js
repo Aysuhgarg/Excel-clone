@@ -1,12 +1,12 @@
 let row=document.querySelector(".row-number-section");
-let body=document.querySelector("container");
+//let body=document.querySelector("container");
 let formulaInput = document.querySelector(".formula-input-section");
 let a3= document.querySelector(".selected-cell-div");
 let column=document.querySelector(".column-tag-section");
 let cellsection=document.querySelector(".cell-section");
 
 let dataobj={};                                               //global data object that store value,formula,upstrem,downstream
-let lastcell;
+let lastCell;
 
 formulaInput.addEventListener("keydown", function (e) {
     if (e.key == "Enter") {
@@ -20,7 +20,7 @@ formulaInput.addEventListener("keydown", function (e) {
       console.log("not returned");
   
       let selectedCellAdd = lastCell.getAttribute("data-address");
-      let cellObj = dataObj[selectedCellAdd];
+      let cellObj = dataobj[selectedCellAdd];
   
       cellObj.formula = typedFormula;
   
@@ -30,7 +30,62 @@ formulaInput.addEventListener("keydown", function (e) {
         removeFromDownstream(upstream[k], selectedCellAdd);
       }
   
-      currCellObj.upstream = [];
+      cellObj.upstream = [];
+
+      let formulaArr=typedFormula.split(" ");
+      let cellsInFormula=[];
+
+      for(let i=0;i<formulaArr.length;i++)
+      {
+        if(
+        formulaArr[i]!="+" && 
+        formulaArr[i]!="-" && 
+        formulaArr[i]!="/" && 
+        formulaArr[i]!="*" && 
+        isNaN(formulaArr[i]))
+        {
+          cellsInFormula.push(formulaArr[i]);
+
+        }
+
+      }
+
+      for(let i=0;i<cellsInFormula.length;i++)
+      {
+        addToDownStream(cellsInFormula[i],selectedCellAdd);
+      }
+
+      cellObj.upstream = cellsInFormula;
+
+      let valobj = {}
+  
+    for(let i = 0;i<cellsInFormula.length;i++){
+  
+        let cellValue =  dataobj[cellsInFormula[i]].value
+  
+        valobj[cellsInFormula[i]] = cellValue
+    }
+  
+  //a1 + b1
+  
+  for(let key in valobj){
+    typedFormula = typedFormula.replace(key,valobj[key])
+  }
+  
+  //20 + 10
+  
+  let newValue = eval(typedFormula);
+
+  lastCell.innerText=newValue;
+  cellObj.value=newValue;
+  let downstream=cellObj.downstream;
+
+  for(let i=0;i<downstream.length;i++)
+  {
+    updateCell(downstream[i]);
+  }
+
+  dataobj[selectedCellAdd]=cellObj;
     }
   });
 
@@ -82,7 +137,10 @@ for(let i=1;i<=100;i++)                              //Nested Loop for Creating 
             value:undefined,
             formula:undefined,
             downstream:[],
-            upstream:[]
+            upstream:[],
+            align:"left",
+            color:"black",
+            bgColor:"White",
         }
 
       let celldiv =document.createElement("div");                      //cell created
@@ -91,7 +149,7 @@ for(let i=1;i<=100;i++)                              //Nested Loop for Creating 
 
       celldiv.addEventListener("input",function(e){                      //Function on each cell (input)
         let currCellAddress=e.currentTarget.getAttribute("data-address");  //fetching the address of clicked cell
-
+        //lastcell=celladdress;
         dataobj[currCellAddress].value=e.currentTarget.innerText;        // Updating the value in dataobj
         dataobj[currCellAddress].formula=undefined;
 
@@ -131,13 +189,13 @@ for(let i=1;i<=100;i++)                              //Nested Loop for Creating 
 
       celldiv.addEventListener("click",function(e)                       // Function on each cell onclick
       {
-          if(lastcell)
+          if(lastCell)
           {
-              lastcell.classList.remove("cell-selected");
+              lastCell.classList.remove("cell-selected");
           }
 
           e.currentTarget.classList.add("cell-selected");
-          lastcell =e.currentTarget;
+          lastCell =e.currentTarget;
 
          let data= e.currentTarget.getAttribute("data-address");
           a3.innerText=data;
@@ -151,18 +209,28 @@ for(let i=1;i<=100;i++)                              //Nested Loop for Creating 
     cellsection.append(rowDiv);
 }
 
+if (localStorage.getItem("sheet")) {
+  console.log(1);
+  dataObj = JSON.parse(localStorage.getItem("sheet"));
 
-dataobj["A1"].value = 20;                                            //testing by fake data
-dataobj["A1"].downstream = ["B1"];
-dataobj["B1"].formula = "2 * A1";
-dataobj["B1"].upstream = ["A1"];
-dataobj["B1"].value = 40;
+  for (let x in dataObj) {
+    let cell = document.querySelector(`[data-address='${x}']`);
+    if (dataObj[x].value) cell.innerText = dataObj[x].value;
+    // dataObj[x]
+  }
+}
 
-let a1cell = document.querySelector("[data-address='A1']")
-let b1cell = document.querySelector("[data-address='B1']")
+// dataobj["A1"].value = 20;                                            //testing by fake data
+// dataobj["A1"].downstream = ["B1"];
+// dataobj["B1"].formula = "2 * A1";
+// dataobj["B1"].upstream = ["A1"];
+// dataobj["B1"].value = 40;
 
-a1cell.innerText = 20
-b1cell.innerText = 40
+// let a1cell = document.querySelector("[data-address='A1']")
+// let b1cell = document.querySelector("[data-address='B1']")
+
+// a1cell.innerText = 20
+// b1cell.innerText = 40
 
 // C1 = Formula(2*A1)
 // A1 = parent
@@ -236,3 +304,14 @@ function removeFromDownstream(parentCell, childCell) {
     updateCell(downstream[i]);
   }
   } 
+
+
+  function addToDownStream(parent,child)
+  {
+    //child ko parent ki downstream me add krna hai
+
+    dataobj[parent].downstream.push(child);
+
+  }
+
+
